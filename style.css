@@ -1,4 +1,4 @@
-/* style.css - 安全验证离谱版样式文件 */
+/* style.css - 安全验证离谱版样式文件（完整版，含垂直对齐优化） */
 :root {
     --primary: #4285f4;
     --success: #34a853;
@@ -136,6 +136,8 @@ p {
     width: 100%;
     margin-bottom: 20px;
     position: relative;
+    /* 新增：统一最小高度，避免切换时跳动 */
+    min-height: 360px;
 }
 
 .captcha-canvas {
@@ -172,6 +174,8 @@ p {
     position: relative;
     overflow: hidden;
     border: 2px solid #e0e0e0;
+    /* 新增：微调第二关滑块垂直位置，让视觉更平衡 */
+    margin-top: 10px;
 }
 
 .box-2d {
@@ -184,6 +188,9 @@ p {
     overflow: hidden;
     background-image: radial-gradient(#ddd 1px, transparent 1px);
     background-size: 20px 20px;
+    /* 新增：消除默认上边距，底部留出间距 */
+    margin-top: 0;
+    margin-bottom: 15px;
 }
 
 .mic-container {
