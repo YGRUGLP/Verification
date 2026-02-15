@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>安全验证离谱版</title>
+    <!-- 外部样式表，适用于 GitHub Pages 的 /Verification/style.css -->
+    <link rel="stylesheet" href="/Verification/style.css">
+</head>
+<body>
+    <div class="card">
+        <!-- 首页 -->
+        <div id="view-home" class="view-section" style="display:block;">
+            <div class="alert-banner">
+                <strong>⚠️ 安全验证离谱版</strong><br>
+                检测到异常流量。请完成以下多重验证。
+            </div>
+            <div class="captcha-box" onclick="startLevel1()">
+                <div style="display:flex; align-items:center;">
+                    <div class="cb-fake" id="fake-cb"></div>
+                    <span style="font-size:14px;">点击开始验证</span>
+                </div>
+                <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="30" style="opacity:0.6">
+            </div>
+        </div>
+
+        <!-- 运动权限 -->
+        <div id="view-perm-motion" class="view-section">
+            <span class="icon-large">📲</span>
+            <h2>步骤 2/5: 运动校准</h2>
+            <div class="hint-box">
+                数字验证通过。<br>
+                请允许访问传感器，以进行物理平衡测试。
+            </div>
+            <button class="btn" onclick="requestMotionPermission()">允许并开始</button>
+        </div>
+
+        <!-- 麦克风权限 -->
+        <div id="view-perm-mic" class="view-section">
+            <span class="icon-large">🎙️</span>
+            <h2>步骤 3/5: 环境声纹</h2>
+            <div class="hint-box">
+                重力测试通过。<br>
+                需要麦克风检测环境噪音。
+                <br><strong>⚠️ 全程离线处理，不上传录音。</strong>
+            </div>
+            <button class="btn" onclick="reqMic()">授权并继续</button>
+        </div>
+
+        <!-- 摄像头权限 -->
+        <div id="view-perm-camera" class="view-section">
+            <span class="icon-large">📷</span>
+            <h2>步骤 4/5: 色彩识别</h2>
+            <div class="hint-box">
+                声纹验证通过。<br>
+                最后一步需要摄像头进行颜色匹配。
+            </div>
+            <button class="btn" onclick="reqCamera()">授权并开始</button>
+        </div>
+
+        <!-- 游戏主界面 -->
+        <div id="view-game" class="view-section">
+            <div class="status-bar" id="status-text">加载中...</div>
+
+            <!-- 关卡1 -->
+            <div id="stage-1" class="game-stage">
+                <div style="font-size:12px; color:#999; margin-bottom:5px;">关卡 1: 视觉验证</div>
+                <canvas id="captcha-canvas" class="captcha-canvas" width="300" height="100"></canvas>
+                <div class="input-row">
+                    <input type="text" id="captcha-input" class="captcha-input" placeholder="输入图中数字" maxlength="6">
+                    <button class="btn" style="width: auto; margin: 0;" onclick="checkCaptcha()">确认</button>
+                </div>
+                <p style="font-size:12px; margin-top:5px; cursor:pointer; color:var(--primary);" onclick="initCaptcha()">看不清？换一张</p>
+            </div>
+
+            <!-- 关卡2 水平平衡 (2%宽度) -->
+            <div id="stage-2" class="game-stage">
+                <div style="font-size:12px; color:#999; margin-bottom:5px;">关卡 2: 水平平衡</div>
+                <div class="track-h">
+                    <div class="target-zone" id="t-2" style="height:100%; top:0;"></div>
+                    <div class="ball" id="b-2" style="top:50%;"></div>
+                </div>
+            </div>
+
+            <!-- 关卡3 精准定位 (2%x2%方框) -->
+            <div id="stage-3" class="game-stage">
+                <div style="font-size:12px; color:#999; margin-bottom:5px;">关卡 3: 精准定位</div>
+                <div class="box-2d">
+                    <div class="target-zone" id="t-3"></div>
+                    <div class="ball" id="b-3"></div>
+                </div>
+            </div>
+
+            <!-- 关卡4 声压控制 (后半段) -->
+            <div id="stage-4" class="game-stage">
+                <div style="font-size:12px; color:#999; margin-bottom:5px;">关卡 4: 声压控制</div>
+                <p style="font-size:12px; margin-bottom:10px;">请持续发出声音，将蓝色条<b>稳定</b>在绿色区域。</p>
+                <div class="mic-container">
+                    <div class="mic-target" id="t-mic"></div>
+                    <div class="mic-bar" id="bar-mic"></div>
+                </div>
+                <div style="margin-top:5px; font-size:12px; color:#aaa;">平滑音量: <span id="vol-val">0</span>%</div>
+            </div>
+
+            <!-- 关卡5 色彩停留 (限3次刷新) -->
+            <div id="stage-5" class="game-stage">
+                <div style="font-size:12px; color:#999; margin-bottom:5px;">关卡 5: 色彩停留 (3秒)</div>
+                <div class="cam-container">
+                    <video id="video5" playsinline autoplay muted></video>
+                    <div class="aim-dot"></div>
+                </div>
+                <div class="color-row">
+                    <span style="font-weight:500;">🎯 目标</span>
+                    <div class="swatch" id="targetSwatch5" style="background:#4a90e2;"></div>
+                </div>
+                <div class="color-row">
+                    <span style="font-weight:500;">🔍 当前</span>
+                    <div class="swatch" id="detectSwatch5" style="background:#333;"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:6px 0;">
+                    <span class="diff-badge" id="diffDisplay5">差值 --</span>
+                    <div>
+                        <button class="btn-small" id="refreshColorBtn5">🎲 新目标</button>
+                        <span class="refresh-counter" id="refreshCounter5">剩余3次</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-bg">
+                <div class="progress-fill" id="main-progress"></div>
+            </div>
+        </div>
+
+        <!-- 成功页面 (含设备码) -->
+        <div id="view-success" class="view-section">
+            <div class="check-icon">✅</div>
+            <h2>验证通过</h2>
+            <p>恭喜，您已通过所有 5 项验证。</p>
+
+            <div class="device-box">
+                <div class="device-label">🔐 设备码 (基于当前网络)</div>
+                <div class="device-code" id="deviceCodeDisplay">获取中...</div>
+                <div class="device-note">基于当前网络计算，可能因网络变化而改变</div>
+            </div>
+
+            <button class="btn" onclick="location.reload()">重新测试</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 全局状态 ---
+        let currentLevel = 0; 
+        let holdTime = 0;
+        const TARGET_TIME = 2000; // 前4关 2秒
+        const COLOR_HOLD_TIME = 3000; // 第5关 3秒
+        let isGameRunning = false;
+
+        // 传感器数据 (由简化版陀螺仪更新)
+        let tiltX = 0, tiltY = 0;
+        let player = { x: 50, y: 50 };
+        let target = { x: 0, y: 0, w: 20, h: 20 };
+        
+        // 验证码数据
+        let captchaCode = "";
+
+        // 音频数据
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let micTargetRange = { min: 40, max: 70 };
+        let currentSmoothVol = 0; 
+        const SMOOTHING_FACTOR = 0.05;
+
+        // 摄像头相关
+        let video5 = document.getElementById('video5');
+        let canvas5 = document.createElement('canvas');
+        canvas5.width = 32;
+        canvas5.height = 32;
+        let ctx5 = canvas5.getContext('2d');
+        let targetColor5 = { r: 255, g: 100, b: 100 };
+        let currentColor5 = { r: 0, g: 0, b: 0 };
+        let colorThreshold = 75;
+        let cameraStream = null;
+
+        // 第五关刷新次数限制
+        let refreshCount5 = 3;
+
+        // 跳转定时器
+        let redirectTimer = null;
+
+        // DOM 元素
+        const ui = {
+            home: document.getElementById('view-home'),
+            permMotion: document.getElementById('view-perm-motion'),
+            permMic: document.getElementById('view-perm-mic'),
+            permCamera: document.getElementById('view-perm-camera'),
+            game: document.getElementById('view-game'),
+            success: document.getElementById('view-success'),
+            status: document.getElementById('status-text'),
+            progress: document.getElementById('main-progress'),
+            stages: [
+                null,
+                document.getElementById('stage-1'),
+                document.getElementById('stage-2'),
+                document.getElementById('stage-3'),
+                document.getElementById('stage-4'),
+                document.getElementById('stage-5')
+            ],
+            canvas: document.getElementById('captcha-canvas'),
+            input: document.getElementById('captcha-input'),
+            b2: document.getElementById('b-2'), t2: document.getElementById('t-2'),
+            b3: document.getElementById('b-3'), t3: document.getElementById('t-3'),
+            micBar: document.getElementById('bar-mic'), tMic: document.getElementById('t-mic'),
+            volText: document.getElementById('vol-val'),
+            targetSwatch5: document.getElementById('targetSwatch5'),
+            detectSwatch5: document.getElementById('detectSwatch5'),
+            diffDisplay5: document.getElementById('diffDisplay5'),
+            refreshColorBtn5: document.getElementById('refreshColorBtn5'),
+            refreshCounter5: document.getElementById('refreshCounter5'),
+            deviceCode: document.getElementById('deviceCodeDisplay')
+        };
+
+        function switchView(viewElement) {
+            document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+            viewElement.style.display = 'block';
+        }
+
+        // ========== 关卡1: 数字验证 ==========
+        function startLevel1() {
+            document.getElementById('fake-cb').style.background = "#ccc";
+            setTimeout(() => {
+                switchView(ui.game);
+                currentLevel = 1;
+                ui.progress.style.width = '10%';
+                ui.stages[1].style.display = 'block';
+                ui.stages[2].style.display = 'none';
+                ui.stages[3].style.display = 'none';
+                ui.stages[4].style.display = 'none';
+                ui.stages[5].style.display = 'none';
+                ui.status.innerText = "请输入图片中的数字";
+                ui.status.style.background = "#e2e3e5";
+                ui.status.style.color = "#383d41";
+                initCaptcha();
+            }, 300);
+        }
+
+        function initCaptcha() {
+            const ctx = ui.canvas.getContext('2d');
+            const w = ui.canvas.width;
+            const h = ui.canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0,0,w,h);
+
+            captchaCode = Math.floor(1000 + Math.random() * 9000).toString(); // 4位数字
+            
+            ctx.font = 'bold 60px Arial';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+
+            for (let i = 0; i < captchaCode.length; i++) {
+                ctx.save();
+                let x = (w / captchaCode.length) * (i + 0.5);
+                let y = h / 2;
+                let angle = (Math.random() - 0.5) * 0.4;
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+                ctx.fillStyle = '#333';
+                ctx.fillText(captchaCode[i], 0, 0);
+                ctx.restore();
+            }
+
+            // 随机透明遮挡物
+            for (let i = 0; i < 7; i++) {
+                ctx.beginPath();
+                let r = Math.random() * 30 + 10;
+                let cx = Math.random() * w;
+                let cy = Math.random() * h;
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                let red = Math.floor(Math.random()*255);
+                let green = Math.floor(Math.random()*255);
+                let blue = Math.floor(Math.random()*255);
+                ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.3)`;
+                ctx.fill();
+            }
+
+            // 干扰线
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random()*w, Math.random()*h);
+                ctx.lineTo(Math.random()*w, Math.random()*h);
+                ctx.strokeStyle = `rgba(0,0,0, 0.2)`;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+            
+            ui.input.value = '';
+            ui.input.focus();
+        }
+
+        function checkCaptcha() {
+            if (ui.input.value === captchaCode) {
+                switchView(ui.permMotion);
+            } else {
+                alert("验证码错误，请重试");
+                initCaptcha();
+            }
+        }
+
+        // ========== 陀螺仪权限请求 ==========
+        function requestMotionPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            startLevel2();
+                        } else {
+                            alert('需要陀螺仪权限才能继续');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                startLevel2();
+            }
+        }
+
+        function handleOrientation(event) {
+            if (event.gamma !== null) {
+                tiltX = Math.max(-30, Math.min(30, event.gamma));
+            }
+            if (event.beta !== null) {
+                tiltY = Math.max(20, Math.min(80, event.beta));
+            }
+        }
+
+        // 麦克风权限
+        async function reqMic() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') await audioContext.resume();
+
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                startLevel4();
+
+            } catch (e) {
+                console.error(e);
+                alert("需要麦克风权限");
+            }
+        }
+
+        // 摄像头权限
+        async function reqCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: { ideal: 'environment' } } 
+                });
+                cameraStream = stream;
+                if (video5) {
+                    video5.srcObject = stream;
+                    await video5.play();
+                }
+                startLevel5();
+            } catch (e) {
+                console.error(e);
+                alert("需要摄像头权限");
+            }
+        }
+
+        // ========== 关卡2 (2%宽度) ==========
+        function startLevel2() {
+            switchView(ui.game);
+            currentLevel = 2;
+            holdTime = 0;
+            ui.progress.style.width = '25%';
+
+            ui.stages[1].style.display = 'none';
+            ui.stages[2].style.display = 'block';
+            ui.stages[3].style.display = 'none';
+            ui.stages[4].style.display = 'none';
+            ui.stages[5].style.display = 'none';
+
+            ui.status.innerText = "请左右倾斜手机对准绿色区域";
+            
+            let w = 2;  // 2% 宽度
+            target = { x: Math.random()*(100-w), y: 0, w: w, h: 100 };
+            ui.t2.style.left = target.x + '%';
+            ui.t2.style.width = target.w + '%';
+
+            if(!isGameRunning) {
+                isGameRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // ========== 关卡3 (2%x2%方框) ==========
+        function startLevel3() {
+            currentLevel = 3;
+            holdTime = 0;
+            ui.progress.style.width = '50%';
+            
+            ui.stages[2].style.display = 'none';
+            ui.stages[3].style.display = 'block';
+
+            ui.status.innerText = "请将球移入方框内";
+            
+            let w = 2, h = 2;  // 2% 方框
+            target = { x: Math.random()*(90-w)+5, y: Math.random()*(90-h)+5, w:w, h:h };
+            ui.t3.style.left = target.x + '%';
+            ui.t3.style.top = target.y + '%';
+            ui.t3.style.width = target.w + '%';
+            ui.t3.style.height = target.h + '%';
+        }
+
+        function pauseForMic() {
+            isGameRunning = false;
+            switchView(ui.permMic);
+        }
+
+        // ========== 关卡4 (后半段随机) ==========
+        function startLevel4() {
+            switchView(ui.game);
+            currentLevel = 4;
+            holdTime = 0;
+            ui.progress.style.width = '75%';
+            currentSmoothVol = 0;
+
+            ui.stages[1].style.display = 'none';
+            ui.stages[2].style.display = 'none';
+            ui.stages[3].style.display = 'none';
+            ui.stages[4].style.display = 'block';
+            ui.stages[5].style.display = 'none';
+
+            let rangeWidth = 20; 
+            // 后半段：min 从 50 到 80 随机
+            let rangeStart = Math.random() * (80 - 50) + 50; // 50~80
+            micTargetRange = { min: rangeStart, max: rangeStart + rangeWidth };
+
+            ui.status.innerText = "请控制声音大小在绿色区域内";
+            ui.tMic.style.left = micTargetRange.min + '%';
+            ui.tMic.style.width = (micTargetRange.max - micTargetRange.min) + '%';
+            
+            isGameRunning = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gotoCameraPermission() {
+            isGameRunning = false;
+            if (audioContext) audioContext.close();
+            switchView(ui.permCamera);
+        }
+
+        // ========== 关卡5 (限3次刷新) ==========
+        function startLevel5() {
+            switchView(ui.game);
+            currentLevel = 5;
+            holdTime = 0;
+            ui.progress.style.width = '75%';
+
+            ui.stages[1].style.display = 'none';
+            ui.stages[2].style.display = 'none';
+            ui.stages[3].style.display = 'none';
+            ui.stages[4].style.display = 'none';
+            ui.stages[5].style.display = 'block';
+
+            ui.status.innerText = "对准目标颜色并保持3秒";
+            ui.status.style.background = "#fff3cd";
+            ui.status.style.color = "#856404";
+
+            // 初始化刷新次数
+            refreshCount5 = 3;
+            ui.refreshCounter5.innerText = `剩余${refreshCount5}次`;
+            ui.refreshColorBtn5.disabled = false;
+
+            randomTargetColor5();
+            ui.refreshColorBtn5.onclick = function() {
+                if (refreshCount5 > 0) {
+                    randomTargetColor5();
+                    refreshCount5--;
+                    ui.refreshCounter5.innerText = `剩余${refreshCount5}次`;
+                } else {
+                    alert("您已使用完次数！");
+                    ui.refreshColorBtn5.disabled = true;
+                }
+            };
+
+            if (!isGameRunning) {
+                isGameRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function randomTargetColor5() {
+            targetColor5 = {
+                r: Math.floor(Math.random() * 256),
+                g: Math.floor(Math.random() * 256),
+                b: Math.floor(Math.random() * 256)
+            };
+            ui.targetSwatch5.style.backgroundColor = `rgb(${targetColor5.r}, ${targetColor5.g}, ${targetColor5.b})`;
+            holdTime = 0;
+        }
+
+        function colorDistance(c1, c2) {
+            let dr = c1.r - c2.r;
+            let dg = c1.g - c2.g;
+            let db = c1.b - c2.b;
+            return Math.sqrt(dr*dr + dg*dg + db*db);
+        }
+
+        function extractCenterColor5() {
+            if (!video5 || video5.readyState < 2) return { r:0, g:0, b:0 };
+            try {
+                ctx5.drawImage(video5, 0, 0, canvas5.width, canvas5.height);
+                let data = ctx5.getImageData(0, 0, canvas5.width, canvas5.height).data;
+                let r=0,g=0,b=0,count=0;
+                for (let y=10; y<22; y++) {
+                    for (let x=10; x<22; x++) {
+                        let idx = (y*canvas5.width + x)*4;
+                        r += data[idx];
+                        g += data[idx+1];
+                        b += data[idx+2];
+                        count++;
+                    }
+                }
+                return { r: r/count, g: g/count, b: b/count };
+            } catch(e) {
+                return { r:0, g:0, b:0 };
+            }
+        }
+
+        // ========== 游戏循环 ==========
+        function getRawMicVolume() {
+            if (!analyser || !dataArray) return 0;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for(let v of dataArray) sum += v;
+            let avg = sum / dataArray.length;
+            return Math.min(Math.round(avg * 2.5), 100);
+        }
+
+        function gameLoop() {
+            if (!isGameRunning) return;
+
+            let hit = false;
+
+            // 关卡2&3
+            if (currentLevel === 2 || currentLevel === 3) {
+                let tx = tiltX; if(tx<-30)tx=-30; if(tx>30)tx=30;
+                let targetX = (tx+30)*100/60;
+                
+                let targetY = player.y;
+                if (currentLevel === 3) {
+                    let ty = tiltY; if(ty<20)ty=20; if(ty>80)ty=80;
+                    targetY = (ty-20)*100/60;
+                }
+
+                player.x += (targetX - player.x) * 0.1;
+                player.y += (targetY - player.y) * 0.1;
+
+                let inX = player.x > target.x && player.x < target.x+target.w;
+                let inY = true;
+                if (currentLevel === 3) inY = player.y > target.y && player.y < target.y+target.h;
+                hit = inX && inY;
+
+                let el = currentLevel===2 ? ui.b2 : ui.b3;
+                el.style.left = player.x + '%';
+                if(currentLevel===3) el.style.top = player.y + '%';
+                
+                let tEl = currentLevel===2 ? ui.t2 : ui.t3;
+                tEl.style.backgroundColor = hit ? "rgba(52, 168, 83, 0.6)" : "rgba(52, 168, 83, 0.2)";
+            }
+
+            // 关卡4
+            if (currentLevel === 4) {
+                let targetVol = getRawMicVolume();
+                currentSmoothVol += (targetVol - currentSmoothVol) * SMOOTHING_FACTOR;
+                
+                ui.volText.innerText = Math.round(currentSmoothVol);
+                ui.micBar.style.width = currentSmoothVol + '%';
+
+                hit = currentSmoothVol > micTargetRange.min && currentSmoothVol < micTargetRange.max;
+                ui.tMic.style.backgroundColor = hit ? "rgba(52, 168, 83, 0.6)" : "rgba(52, 168, 83, 0.3)";
+            }
+
+            // 关卡5
+            if (currentLevel === 5) {
+                if (video5 && video5.readyState >= 2) {
+                    currentColor5 = extractCenterColor5();
+                    let dist = colorDistance(currentColor5, targetColor5);
+                    ui.detectSwatch5.style.backgroundColor = `rgb(${Math.round(currentColor5.r)}, ${Math.round(currentColor5.g)}, ${Math.round(currentColor5.b)})`;
+                    ui.diffDisplay5.innerText = `差值 ${dist.toFixed(1)}`;
+
+                    hit = dist < colorThreshold;
+                    ui.targetSwatch5.style.border = hit ? "3px solid #34a853" : "3px solid white";
+                }
+            }
+
+            let targetDuration = (currentLevel === 5) ? COLOR_HOLD_TIME : TARGET_TIME;
+
+            if (hit) {
+                holdTime += 16.6;
+                let left = ((targetDuration - holdTime)/1000).toFixed(1);
+                if(left<0) left=0;
+                ui.status.innerText = currentLevel === 5 ? `色彩稳定中... ${left}s` : `验证中... ${left}s`;
+                ui.status.style.background = "#d4edda";
+                ui.status.style.color = "#155724";
+            } else {
+                if(holdTime>0) holdTime -= 40;
+                if(holdTime<0) holdTime = 0;
+                ui.status.style.background = "#fff3cd";
+                ui.status.style.color = "#856404";
+                
+                if(currentLevel===2) ui.status.innerText = "请调整角度对准目标";
+                if(currentLevel===3) ui.status.innerText = "请将球移入方框";
+                if(currentLevel===4) ui.status.innerText = currentSmoothVol < micTargetRange.min ? "声音太小" : "声音太大";
+                if(currentLevel===5) ui.status.innerText = "颜色偏离，重新对准";
+            }
+
+            let base = 0;
+            if (currentLevel === 2) base = 25;
+            else if (currentLevel === 3) base = 50;
+            else if (currentLevel === 4) base = 75;
+            else if (currentLevel === 5) base = 75;
+
+            let extra = (holdTime / targetDuration) * 25;
+            if (extra > 25) extra = 25;
+            ui.progress.style.width = (base + extra) + '%';
+
+            // 通关判定
+            if (holdTime >= targetDuration) {
+                if (currentLevel === 2) {
+                    startLevel3();
+                } else if (currentLevel === 3) {
+                    pauseForMic();
+                    return; 
+                } else if (currentLevel === 4) {
+                    gotoCameraPermission();
+                    return;
+                } else if (currentLevel === 5) {
+                    isGameRunning = false;
+                    if (cameraStream) {
+                        cameraStream.getTracks().forEach(t => t.stop());
+                        cameraStream = null;
+                    }
+                    switchView(ui.success);
+                    generateDeviceCode();
+                    return;
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ========== 设备码生成 (基于当前网络IP) ==========
+        async function generateDeviceCode() {
+            const deviceEl = ui.deviceCode;
+            deviceEl.innerText = '获取中...';
+
+            try {
+                const res = await fetch('https://api64.ipify.org?format=json');
+                const data = await res.json();
+                let ip = data.ip;
+
+                // 提取所有数字
+                let numStr = ip.replace(/[^0-9]/g, '');
+                if (numStr.length === 0) {
+                    deviceEl.innerText = '无法提取数字';
+                    return;
+                }
+
+                const num = BigInt(numStr);
+                const code = num * 3n;
+
+                // 动画显示（类已自带popIn，但需要重新触发）
+                deviceEl.classList.remove('device-code');
+                void deviceEl.offsetWidth; // 强制重绘
+                deviceEl.classList.add('device-code');
+                deviceEl.innerText = code.toString();
+
+                // 5秒后跳转
+                if (redirectTimer) clearTimeout(redirectTimer);
+                redirectTimer = setTimeout(() => {
+                    window.location.href = 'https://b23.tv/mDG1nfg';
+                }, 5000);
+
+            } catch (e) {
+                console.error(e);
+                deviceEl.innerText = '获取失败';
+            }
+        }
+
+        // 桌面调试辅助
+        window.addEventListener('mousemove', e => {
+            if(currentLevel !== 2 && currentLevel !== 3) return;
+            let xPct = e.clientX / window.innerWidth;
+            let yPct = e.clientY / window.innerHeight;
+            tiltX = (xPct * 60) - 30;
+            tiltY = (yPct * 60) + 20;
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(t => t.stop());
+            }
+            if (redirectTimer) clearTimeout(redirectTimer);
+        });
+    </script>
+</body>
+</html>
