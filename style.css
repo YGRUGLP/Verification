@@ -1,398 +1,239 @@
-/* style.css - 安全验证离谱版样式文件（完整版，含垂直对齐优化） */
+@charset "UTF-8";
+/* ==============================
+   配套样式表 - 安全验证界面
+   来源：整合自原HTML内联样式
+   包含：全局变量、布局、验证视图、关卡1-6及成功页样式
+   ============================== */
+
+/* 导入Roboto字体以确保一致性 */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* ==============================
+   全局与基础样式 (来自 Source 1)
+   ============================== */
 :root {
-    --primary: #4285f4;
-    --success: #34a853;
-    --warn-bg: #fff3cd;
-    --warn-text: #856404;
-    --bg: #f1f3f4;
+    --rc-blue: #4285f4;     /* 经典蓝 */
+    --rc-hover: #1a73e8;    /* 悬停蓝 */
+    --rc-border: #d3d3d3;   /* 边框灰 */
+    --rc-bg: #f9f9f9;       /* 浅灰背景 */
+    --rc-text: #222222;     /* 正文黑 */
+    --rc-sub: #555555;      /* 辅助灰 */
+    --rc-error: #d93025;    /* 错误红 */
+    --rc-success: #0F9D58;  /* 成功绿 */
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg);
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f0f0;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     margin: 0;
     overflow: hidden;
+    color: var(--rc-text);
 }
 
-.card {
+/* 主容器 */
+.rc-container {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    width: 90%;
-    max-width: 380px;
-    padding: 24px;
-    box-sizing: border-box;
-    text-align: center;
-}
-
-h2 {
-    margin: 0 0 10px 0;
-    font-size: 18px;
-    color: #333;
-}
-
-p {
-    color: #666;
-    font-size: 14px;
-    margin-bottom: 20px;
-    line-height: 1.5;
-}
-
-.btn {
-    background-color: var(--primary);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    font-size: 15px;
-    cursor: pointer;
     width: 100%;
-    font-weight: 500;
-    transition: opacity 0.2s;
-    margin-top: 10px;
-}
-
-.btn:active {
-    opacity: 0.8;
-}
-
-.btn:disabled {
-    opacity: 0.4;
-    pointer-events: none;
-}
-
-.view-section {
-    display: none;
-}
-
-#view-home {
-    display: block;
-}
-
-.alert-banner {
-    background: #fce8e6;
-    color: #c5221f;
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    margin-bottom: 20px;
-    text-align: left;
-    border: 1px solid #fad2cf;
-}
-
-.captcha-box {
-    border: 1px solid #d3d3d3;
-    background: #f9f9f9;
-    padding: 12px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-}
-
-.cb-fake {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #c1c1c1;
-    background: white;
-    border-radius: 2px;
-    margin-right: 10px;
-}
-
-.icon-large {
-    font-size: 40px;
-    display: block;
-    margin-bottom: 15px;
-}
-
-.hint-box {
-    background: #f5f5f5;
-    padding: 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #555;
-    text-align: left;
-    margin-bottom: 20px;
-}
-
-.status-bar {
-    background: var(--warn-bg);
-    color: var(--warn-text);
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    margin-bottom: 20px;
-    font-weight: bold;
-    transition: background 0.3s;
-}
-
-.game-stage {
-    display: none;
-    width: 100%;
-    margin-bottom: 20px;
-    position: relative;
-    /* 新增：统一最小高度，避免切换时跳动 */
-    min-height: 360px;
-}
-
-.captcha-canvas {
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    background: #fff;
-    width: 100%;
-}
-
-.input-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.captcha-input {
-    flex: 1;
-    padding: 10px;
+    max-width: 400px; /* 适配列表宽度 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 16px;
-    outline: none;
-}
-
-.captcha-input:focus {
-    border-color: var(--primary);
-}
-
-.track-h {
-    height: 50px;
-    background: #eee;
-    border-radius: 25px;
     position: relative;
-    overflow: hidden;
-    border: 2px solid #e0e0e0;
-    /* 新增：微调第二关滑块垂直位置，让视觉更平衡 */
-    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
 }
 
-.box-2d {
-    height: 280px;
-    width: 100%;
-    background: #fcfcfc;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    position: relative;
-    overflow: hidden;
-    background-image: radial-gradient(#ddd 1px, transparent 1px);
-    background-size: 20px 20px;
-    /* 新增：消除默认上边距，底部留出间距 */
-    margin-top: 0;
-    margin-bottom: 15px;
-}
-
-.mic-container {
-    width: 100%;
-    height: 40px;
-    background: #333;
-    border-radius: 20px;
-    position: relative;
-    overflow: hidden;
-    border: 2px solid #222;
-}
-
-.mic-bar {
-    height: 100%;
-    width: 0%;
-    background: #0099ff;
-    border-radius: 20px;
-}
-
-.mic-target {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    background: rgba(52, 168, 83, 0.3);
-    border-left: 2px dashed #4CAF50;
-    border-right: 2px dashed #4CAF50;
-    z-index: 5;
-    box-sizing: border-box;
-}
-
-.cam-container {
-    background: #000;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 10px;
-    aspect-ratio: 4/3;
-    position: relative;
-}
-
-#video5 {
-    width: 100%;
-    height: 100%;
-    display: block;
-    transform: scaleX(-1);
-}
-
-.aim-dot {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(255,255,255,0.8);
-    border-radius: 50%;
-    background: rgba(255,255,255,0.15);
-    box-shadow: 0 0 10px white;
-    pointer-events: none;
-    z-index: 5;
-}
-
-.color-row {
+/* 首页入口 */
+.rc-anchor-content {
+    background: #f9f9f9;
+    border: 1px solid #d3d3d3;
+    border-radius: 3px;
+    box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
+    width: 300px;
+    height: 74px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #f5f5f5;
-    padding: 8px 12px;
-    border-radius: 30px;
-    margin: 6px 0;
-}
-
-.swatch {
-    width: 36px;
-    height: 36px;
-    border-radius: 18px;
-    border: 2px solid white;
-    box-shadow: 0 0 5px rgba(0,0,0,0.2);
-}
-
-.diff-badge {
-    background: var(--primary);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-}
-
-.btn-small {
-    background: #e0e0e0;
-    color: #333;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 30px;
-    font-size: 13px;
+    padding: 0 12px;
+    margin: 0 auto;
+    background: #fff;
     cursor: pointer;
-    margin-top: 5px;
-    font-weight: 500;
 }
 
-.btn-small:active {
-    opacity: 0.7;
+/* 蓝色头部 */
+.rc-header {
+    background-color: var(--rc-blue);
+    color: white;
+    padding: 16px 20px;
+    line-height: 1.2;
+}
+.rc-header h2 { margin: 0; font-size: 20px; font-weight: 500; }
+.rc-header p { margin: 8px 0 0; font-size: 14px; color: #fff; opacity: 0.9; }
+
+/* 内容区域 */
+.rc-content {
+    padding: 10px;
+    min-height: 320px; /* 稍微增高以适应列表 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: #fff;
+    position: relative;
 }
 
-.btn-small:disabled {
-    opacity: 0.4;
-    pointer-events: none;
+/* 底部操作栏 */
+.rc-footer {
+    border-top: 1px solid #ececec;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
 }
 
-.refresh-counter {
-    font-size: 12px;
-    color: #666;
-    margin-left: 8px;
-}
-
-.target-zone {
-    position: absolute;
-    background: rgba(52, 168, 83, 0.2);
-    border: 2px dashed var(--success);
-    box-sizing: border-box;
-    z-index: 1;
-}
-
-.ball {
-    position: absolute;
-    width: 36px;
-    height: 36px;
-    background: var(--primary);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    z-index: 10;
-    transition: top 0.1s linear, left 0.1s linear;
-}
-
-.progress-bg {
-    height: 8px;
-    background: #e0e0e0;
+/* 按钮 */
+.btn {
+    background-color: var(--rc-blue);
+    color: white;
+    border: none;
+    padding: 10px 24px;
     border-radius: 4px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    width: 0%;
-    background: var(--success);
-    transition: width 0.3s ease;
-}
-
-.check-icon {
-    font-size: 60px;
-    color: var(--success);
-    margin-bottom: 10px;
-}
-
-.device-box {
-    background: #1c1c1e;
-    margin-top: 20px;
-    padding: 16px;
-    border-radius: 12px;
-    color: #fff;
-}
-
-.device-label {
-    font-size: 13px;
-    color: #aaa;
-    margin-bottom: 8px;
-}
-
-.device-code {
-    font-size: 22px;
+    font-size: 14px;
     font-weight: bold;
-    color: #00ff88;
-    word-break: break-all;
-    background: #2a2a2c;
-    padding: 12px;
-    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.2s;
+    min-width: 100px;
+}
+.btn:hover { background-color: var(--rc-hover); }
+.btn:disabled { background-color: #ccc; cursor: default; }
+
+.btn-link {
+    background: none; border: none; color: var(--rc-blue);
+    cursor: pointer; font-size: 12px; padding: 5px;
+}
+.btn-link:hover { text-decoration: underline; }
+
+/* 视图切换 */
+.view-section { display: none; width: 100%; }
+#view-home { display: block; }
+
+/* 复选框与Loading */
+.checkbox-container { display: flex; align-items: center; }
+.recaptcha-checkbox {
+    width: 24px; height: 24px; border: 2px solid #c1c1c1;
+    border-radius: 2px; background: #fff; margin-right: 12px;
+}
+.spinner {
+    border: 3px solid #f3f3f3; border-top: 3px solid var(--rc-blue);
+    border-radius: 50%; width: 20px; height: 20px;
+    animation: spin 1s linear infinite; display: none; margin-right: 14px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Logo区 */
+.rc-logo-col {
+    display: flex; flex-direction: column; align-items: center;
+    opacity: 0.6; transform: scale(0.85); transform-origin: right center;
+}
+.rc-logo-text { font-size: 10px; color: #555; margin-top: 2px; }
+.rc-links { font-size: 8px; color: #999; }
+
+/* 游戏区域通用 */
+.game-stage { display: none; width: 100%; height: 100%; position: relative; }
+.hint-text { color: var(--rc-sub); font-size: 14px; margin-bottom: 15px; line-height: 1.5; }
+
+/* 关卡 1-5 样式保持不变 */
+.captcha-canvas { border: 1px solid #ccc; width: 100%; background: #fff; margin-bottom: 10px; }
+.input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.captcha-input { flex: 1; padding: 8px; border: 1px solid #ccc; border-bottom: 2px solid #ccc; font-size: 16px; outline: none; }
+.captcha-input:focus { border-bottom-color: var(--rc-blue); }
+
+.track-h, .box-2d, .mic-container {
+    border: 2px solid #e0e0e0; background: #f1f1f1; position: relative; overflow: hidden;
+}
+.track-h { height: 50px; border-radius: 25px; }
+.box-2d { height: 250px; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; }
+.mic-container { height: 40px; border-radius: 4px; background: #eee; border: 1px solid #ccc; }
+.mic-bar { height: 100%; width: 0%; background: var(--rc-blue); transition: width 0.1s; }
+.mic-target { position: absolute; height: 100%; background: rgba(66, 133, 244, 0.2); border-left: 2px dashed var(--rc-blue); border-right: 2px dashed var(--rc-blue); }
+.cam-container { width: 100%; height: 240px; background: #000; position: relative; overflow: hidden; margin-bottom: 10px; }
+#video5 { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.color-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
+.swatch { width: 30px; height: 30px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border-radius: 50%; }
+
+/* ==============================
+   关卡 6 (列表模式) 样式 - 来自 Source 2
+   ============================== */
+
+.list-container {
+    border: 1px solid #dfe1e5;
+    background: #eee;
+    padding: 2px;
+    /* 限制高度以适应弹窗 */
+    height: 300px;
+    overflow-y: scroll; 
+}
+
+.list-header-internal {
+    font-size: 13px; color: #666; margin-bottom: 8px;
+    display: flex; justify-content: space-between;
+}
+
+.item {
+    background: white; margin-bottom: 2px; padding: 12px;
+    display: flex; align-items: center; cursor: pointer; font-size: 13px;
+    user-select: none;
+    transition: background 0.2s;
+}
+.item:hover { background: #f8f8f8; }
+.item.selected { background: #e8f0fe; }
+
+.item .box {
+    width: 18px; height: 18px; border: 2px solid #bdc1c6;
+    margin-right: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: white;
+}
+
+.item.selected .box { background: var(--rc-blue); border-color: var(--rc-blue); }
+.item.selected .box::after { content: '✓'; color: white; font-size: 12px; font-weight: bold; }
+
+.shake { animation: shake 0.4s; }
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+/* 成功页 */
+.success-box { text-align: center; padding: 20px; }
+.check-circle { 
+    width: 60px; height: 60px; 
+    background: var(--rc-success); color: white; 
+    border-radius: 50%; font-size: 36px; 
+    display: flex; align-items: center; justify-content: center; 
+    margin: 0 auto 20px; 
+}
+.device-code {
     font-family: monospace;
-    animation: popIn 0.5s ease-out;
+    background: #f1f1f1;
+    padding: 15px;
+    border: 1px dashed #999;
+    margin: 20px 0;
+    font-size: 16px;
+    color: var(--rc-blue);
+    font-weight: bold;
+    word-break: break-all;
 }
 
-.device-note {
-    font-size: 11px;
-    color: #888;
-    margin-top: 8px;
-}
+.progress-line { height: 4px; background: #e0e0e0; width: 100%; }
+.progress-fill { height: 100%; background: var(--rc-blue); width: 0%; transition: width 0.3s; }
+#errorMessage { color: var(--rc-error); font-size: 13px; margin-top: 5px; }
 
-@keyframes popIn {
-    0% { transform: scale(0.5); opacity: 0; }
-    80% { transform: scale(1.05); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-/* 响应式设计 */
-@media (max-width: 600px) {
-    .card {
-        padding: 20px;
-    }
-    .btn {
-        padding: 10px 20px;
-        font-size: 14px;
-    }
-    .device-code {
-        font-size: 18px;
-    }
-}
+.tool-icons { display: flex; gap: 15px; color: #555; font-size: 20px; }
+.tool-icon { cursor: pointer; opacity: 0.7; }
+.tool-icon:hover { opacity: 1; color: var(--rc-blue); }
