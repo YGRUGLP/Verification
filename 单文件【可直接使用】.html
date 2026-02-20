@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>安全验证 </title>
+    <style>
+        /* ==============================
+           全局与基础样式 (来自 Source 1)
+           ============================== */
+        :root {
+            --rc-blue: #4285f4;     /* 经典蓝 */
+            --rc-hover: #1a73e8;    /* 悬停蓝 */
+            --rc-border: #d3d3d3;   /* 边框灰 */
+            --rc-bg: #f9f9f9;       /* 浅灰背景 */
+            --rc-text: #222222;     /* 正文黑 */
+            --rc-sub: #555555;      /* 辅助灰 */
+            --rc-error: #d93025;    /* 错误红 */
+            --rc-success: #0F9D58;  /* 成功绿 */
+        }
+
+        body {
+            font-family: Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: var(--rc-text);
+        }
+
+        /* 主容器 */
+        .rc-container {
+            background: white;
+            width: 100%;
+            max-width: 400px; /* 适配列表宽度 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border: 1px solid #ccc;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border-radius: 4px;
+        }
+
+        /* 首页入口 */
+        .rc-anchor-content {
+            background: #f9f9f9;
+            border: 1px solid #d3d3d3;
+            border-radius: 3px;
+            box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
+            width: 300px;
+            height: 74px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            margin: 0 auto;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* 蓝色头部 */
+        .rc-header {
+            background-color: var(--rc-blue);
+            color: white;
+            padding: 16px 20px;
+            line-height: 1.2;
+        }
+        .rc-header h2 { margin: 0; font-size: 20px; font-weight: 500; }
+        .rc-header p { margin: 8px 0 0; font-size: 14px; color: #fff; opacity: 0.9; }
+
+        /* 内容区域 */
+        .rc-content {
+            padding: 10px;
+            min-height: 320px; /* 稍微增高以适应列表 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: #fff;
+            position: relative;
+        }
+
+        /* 底部操作栏 */
+        .rc-footer {
+            border-top: 1px solid #ececec;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+        }
+
+        /* 按钮 */
+        .btn {
+            background-color: var(--rc-blue);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.2s;
+            min-width: 100px;
+        }
+        .btn:hover { background-color: var(--rc-hover); }
+        .btn:disabled { background-color: #ccc; cursor: default; }
+        
+        .btn-link {
+            background: none; border: none; color: var(--rc-blue);
+            cursor: pointer; font-size: 12px; padding: 5px;
+        }
+        .btn-link:hover { text-decoration: underline; }
+
+        /* 视图切换 */
+        .view-section { display: none; width: 100%; }
+        #view-home { display: block; }
+
+        /* 复选框与Loading */
+        .checkbox-container { display: flex; align-items: center; }
+        .recaptcha-checkbox {
+            width: 24px; height: 24px; border: 2px solid #c1c1c1;
+            border-radius: 2px; background: #fff; margin-right: 12px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3; border-top: 3px solid var(--rc-blue);
+            border-radius: 50%; width: 20px; height: 20px;
+            animation: spin 1s linear infinite; display: none; margin-right: 14px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Logo区 */
+        .rc-logo-col {
+            display: flex; flex-direction: column; align-items: center;
+            opacity: 0.6; transform: scale(0.85); transform-origin: right center;
+        }
+        .rc-logo-text { font-size: 10px; color: #555; margin-top: 2px; }
+        .rc-links { font-size: 8px; color: #999; }
+
+        /* 游戏区域通用 */
+        .game-stage { display: none; width: 100%; height: 100%; position: relative; }
+        .hint-text { color: var(--rc-sub); font-size: 14px; margin-bottom: 15px; line-height: 1.5; }
+
+        /* 关卡 1-5 样式保持不变 */
+        .captcha-canvas { border: 1px solid #ccc; width: 100%; background: #fff; margin-bottom: 10px; }
+        .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .captcha-input { flex: 1; padding: 8px; border: 1px solid #ccc; border-bottom: 2px solid #ccc; font-size: 16px; outline: none; }
+        .captcha-input:focus { border-bottom-color: var(--rc-blue); }
+
+        .track-h, .box-2d, .mic-container {
+            border: 2px solid #e0e0e0; background: #f1f1f1; position: relative; overflow: hidden;
+        }
+        .track-h { height: 50px; border-radius: 25px; }
+        .box-2d { height: 250px; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; }
+        .mic-container { height: 40px; border-radius: 4px; background: #eee; border: 1px solid #ccc; }
+        .mic-bar { height: 100%; width: 0%; background: var(--rc-blue); transition: width 0.1s; }
+        .mic-target { position: absolute; height: 100%; background: rgba(66, 133, 244, 0.2); border-left: 2px dashed var(--rc-blue); border-right: 2px dashed var(--rc-blue); }
+        .cam-container { width: 100%; height: 240px; background: #000; position: relative; overflow: hidden; margin-bottom: 10px; }
+        #video5 { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .color-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
+        .swatch { width: 30px; height: 30px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border-radius: 50%; }
+
+        /* ==============================
+           关卡 6 (列表模式) 样式 - 来自 Source 2
+           ============================== */
+        
+        .list-container {
+            border: 1px solid #dfe1e5;
+            background: #eee;
+            padding: 2px;
+            /* 限制高度以适应弹窗 */
+            height: 300px;
+            overflow-y: scroll; 
+        }
+
+        .list-header-internal {
+            font-size: 13px; color: #666; margin-bottom: 8px;
+            display: flex; justify-content: space-between;
+        }
+
+        .item {
+            background: white; margin-bottom: 2px; padding: 12px;
+            display: flex; align-items: center; cursor: pointer; font-size: 13px;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .item:hover { background: #f8f8f8; }
+        .item.selected { background: #e8f0fe; }
+        
+        .item .box {
+            width: 18px; height: 18px; border: 2px solid #bdc1c6;
+            margin-right: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            background: white;
+        }
+        
+        .item.selected .box { background: var(--rc-blue); border-color: var(--rc-blue); }
+        .item.selected .box::after { content: '✓'; color: white; font-size: 12px; font-weight: bold; }
+
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* 成功页 */
+        .success-box { text-align: center; padding: 20px; }
+        .check-circle { 
+            width: 60px; height: 60px; 
+            background: var(--rc-success); color: white; 
+            border-radius: 50%; font-size: 36px; 
+            display: flex; align-items: center; justify-content: center; 
+            margin: 0 auto 20px; 
+        }
+        .device-code {
+            font-family: monospace;
+            background: #f1f1f1;
+            padding: 15px;
+            border: 1px dashed #999;
+            margin: 20px 0;
+            font-size: 16px;
+            color: var(--rc-blue);
+            font-weight: bold;
+            word-break: break-all;
+        }
+
+        .progress-line { height: 4px; background: #e0e0e0; width: 100%; }
+        .progress-fill { height: 100%; background: var(--rc-blue); width: 0%; transition: width 0.3s; }
+        #errorMessage { color: var(--rc-error); font-size: 13px; margin-top: 5px; }
+
+        .tool-icons { display: flex; gap: 15px; color: #555; font-size: 20px; }
+        .tool-icon { cursor: pointer; opacity: 0.7; }
+        .tool-icon:hover { opacity: 1; color: var(--rc-blue); }
+    </style>
+</head>
+<body>
+
+    <!-- 首页 View -->
+    <div id="view-home" class="view-section" style="width: 100%; display: flex; justify-content: center;">
+        <div class="rc-anchor-content" onclick="startLevel1()">
+            <div class="checkbox-container">
+                <div class="recaptcha-checkbox" id="fake-cb"></div>
+                <div class="spinner" id="home-spinner"></div>
+                <span style="font-size: 14px; font-weight: 500; color: #333;">我不是机器人</span>
+            </div>
+            <div class="rc-logo-col">
+                <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="32">
+                <div class="rc-logo-text">reCAPTCHA</div>
+                <div class="rc-links">Privacy - Terms</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗容器 -->
+    <div id="modal-container" class="rc-container" style="display:none;">
+        
+        <div class="rc-header" id="rc-header-bar">
+            <h2>安全验证</h2>
+            <p id="header-instruction">请完成下方的挑战</p>
+        </div>
+
+        <div class="progress-line"><div class="progress-fill" id="main-progress"></div></div>
+
+        <div class="rc-content">
+            
+            <!-- 权限请求页面 -->
+            <div id="view-perm-motion" class="view-section">
+                <div class="hint-text">
+                    <strong>步骤 2/5:</strong> 传感器校准<br>
+                    请允许访问设备方向传感器，以验证物理设备真实性。
+                </div>
+                <div style="text-align:center; padding: 20px;">
+                    <span style="font-size:48px;">📲</span>
+                </div>
+            </div>
+
+            <div id="view-perm-mic" class="view-section">
+                <div class="hint-text">
+                    <strong>步骤 3/5:</strong> 环境声纹<br>
+                    需要麦克风检测环境噪音以排除虚拟机。<br>
+                    <span style="font-size:12px; color:#999;">(全程离线处理)</span>
+                </div>
+                <div style="text-align:center; padding: 20px;">
+                    <span style="font-size:48px;">🎙️</span>
+                </div>
+            </div>
+
+            <div id="view-perm-camera" class="view-section">
+                <div class="hint-text">
+                    <strong>步骤 4/5:</strong> 视觉校验<br>
+                    需要摄像头进行色彩响应测试。<br>
+                    <span style="font-size:12px; color:#999;">(数据不上传)</span>
+                </div>
+                <div style="text-align:center; padding: 20px;">
+                    <span style="font-size:48px;">📷</span>
+                </div>
+            </div>
+
+            <!-- 错误模拟页 -->
+            <div id="view-error" class="view-section">
+                <div class="hint-text" style="text-align:center; margin-top:40px;">
+                    <div class="spinner" style="display:inline-block; border-color:#ccc; border-top-color:var(--rc-blue); width:30px; height:30px;"></div>
+                    <p>正在分析行为数据...</p>
+                    <div id="errorMessage"></div>
+                </div>
+            </div>
+
+            <!-- 游戏主视图 -->
+            <div id="view-game" class="view-section">
+                
+                <!-- Stage 1: Captcha -->
+                <div id="stage-1" class="game-stage">
+                    <p class="hint-text">请输入图片中的字符：</p>
+                    <canvas id="captcha-canvas" class="captcha-canvas" width="300" height="100"></canvas>
+                    <div class="input-row">
+                        <input type="text" id="captcha-input" class="captcha-input" placeholder="输入答案" maxlength="6">
+                    </div>
+                </div>
+
+                <!-- Stage 2: Balance -->
+                <div id="stage-2" class="game-stage">
+                    <div class="track-h">
+                        <div class="mic-target" id="t-2" style="height:100%; top:0; background:rgba(66,133,244,0.3); border-color:var(--rc-blue);"></div>
+                        <div class="ball" id="b-2" style="position:absolute; width:30px; height:30px; background:var(--rc-blue); border-radius:50%; top:50%; transform:translate(-50%,-50%); border:2px solid white; box-shadow:0 1px 2px rgba(0,0,0,0.3);"></div>
+                    </div>
+                </div>
+
+                <!-- Stage 3: Position -->
+                <div id="stage-3" class="game-stage">
+                    <div class="box-2d">
+                        <div class="mic-target" id="t-3" style="position:absolute; background:rgba(66,133,244,0.2); border:2px dashed var(--rc-blue);"></div>
+                        <div class="ball" id="b-3" style="position:absolute; width:20px; height:20px; background:var(--rc-blue); border-radius:50%; transform:translate(-50%,-50%); border:2px solid white;"></div>
+                    </div>
+                </div>
+
+                <!-- Stage 4: Sound -->
+                <div id="stage-4" class="game-stage">
+                    <p class="hint-text">请发出声音，使蓝条保持在虚线框内：</p>
+                    <div class="mic-container">
+                        <div class="mic-target" id="t-mic"></div>
+                        <div class="mic-bar" id="bar-mic"></div>
+                    </div>
+                    <div style="text-align:right; font-size:12px; color:#999; margin-top:4px;">音量: <span id="vol-val">0</span>%</div>
+                </div>
+
+                <!-- Stage 5: Color -->
+                <div id="stage-5" class="game-stage">
+                    <div class="cam-container">
+                        <video id="video5" playsinline autoplay muted></video>
+                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:20px; height:20px; border:2px solid rgba(255,255,255,0.8); border-radius:50%; box-shadow:0 0 0 1000px rgba(0,0,0,0.5); pointer-events:none;"></div>
+                    </div>
+                    
+                    <div class="color-row">
+                        <span>🎯 需寻找的颜色</span>
+                        <div class="swatch" id="targetSwatch5" style="background:#ccc;"></div>
+                    </div>
+                    <div class="color-row">
+                        <span>🔍 当前中心颜色</span>
+                        <div class="swatch" id="detectSwatch5" style="background:#000;"></div>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                        <span id="diffDisplay5" style="font-size:12px; color:#555;">差值: --</span>
+                        <button class="btn-link" id="refreshColorBtn5" style="font-size:13px;">更换目标 (<span id="refreshCounter5">3</span>)</button>
+                    </div>
+                </div>
+
+                <!-- Stage 6: Hell Checkbox (接入 Source 2) -->
+                <div id="stage-6" class="game-stage">
+                    <div class="list-header-internal">
+                        <span>目标: 找出所有正确选项</span>
+                        <span style="color:#666;">已选: <strong id="correct-count" style="color:var(--rc-blue);">0</strong>/3</span>
+                    </div>
+                    
+                    <!-- 这里嵌入 Source 2 的核心滚动列表 -->
+                    <div class="list-container" id="scroll-list">
+                        <!-- JS 动态生成 -->
+                    </div>
+
+                    <div id="level6Status" style="font-size:13px; color:var(--rc-error); min-height:20px; margin-top:5px; text-align: center;"></div>
+                </div>
+
+                <div id="status-text" style="font-size:13px; color:#555; margin-top:10px; min-height:20px; font-style:italic;"></div>
+            </div>
+
+            <div id="view-success" class="view-section">
+                <div class="success-box">
+                    <div class="check-circle">✔</div>
+                    <h3>验证通过</h3>
+                    <p style="font-size:14px; color:#555;">您已证实为人类。</p>
+                    
+                    <div style="text-align:left; font-size:12px; color:#999;">设备安全码：</div>
+                    <div class="device-code" id="deviceCodeDisplay">CALCULATING...</div>
+                    <div id="redirectTip" style="font-size:14px; color:var(--rc-blue); font-weight:bold;"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="rc-footer">
+            <div class="tool-icons">
+                <span class="tool-icon" onclick="initCaptcha()" title="刷新">↻</span>
+                <span class="tool-icon" title="音频验证">🎧</span>
+                <span class="tool-icon" title="帮助">ℹ️</span>
+            </div>
+            <button id="action-btn" class="btn" onclick="handleAction()">开始验证</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 全局状态 ---
+        let currentLevel = 0; 
+        let holdTime = 0;
+        const TARGET_TIME = 2000;
+        const COLOR_HOLD_TIME = 3000;
+        let isGameRunning = false;
+        
+        // 物理/输入数据
+        let tiltX = 0, tiltY = 0;
+        let player = { x: 50, y: 50 };
+        let target = { x: 0, y: 0, w: 20, h: 20 };
+        let captchaCode = "";
+
+        // 音频/视频上下文
+        let audioContext, analyser, dataArray;
+        let micTargetRange = { min: 40, max: 70 };
+        let currentSmoothVol = 0;
+        const SMOOTHING_FACTOR = 0.05;
+        
+        let video5 = document.getElementById('video5');
+        let canvas5 = document.createElement('canvas');
+        canvas5.width = 32; canvas5.height = 32;
+        let ctx5 = canvas5.getContext('2d');
+        let targetColor5 = { r: 255, g: 100, b: 100 };
+        let currentColor5 = { r: 0, g: 0, b: 0 };
+        let cameraStream = null;
+        let refreshCount5 = 3;
+
+        // 关卡6数据 (Source 2 的数据)
+        const hellOptions = [
+            { t: "我不是机器人", v: true }, { t: "我不是机器人", v: true }, { t: "我辨识不出机器人", v: false },
+            { t: "我不是机器人", v: true }, { t: "我是机器人", v: false }, { t: "我不是扫地僧", v: false },
+            { t: "我确实不是机器人", v: false }, { t: "我真的不是机器人", v: false }, { t: "我绝不是机器人", v: false },
+            { t: "我不是扫地机器人", v: false }, { t: "我是一台烤面包机", v: false }, { t: "I am not a robot", v: false },
+            { t: "我不是复读机", v: false }, { t: "我不是复读机", v: false }, { t: "我讨厌验证码", v: false },
+            { t: "我能分清红绿灯", v: false }, { t: "我找得到消防栓", v: false }, { t: "我是碳基生物", v: false },
+            { t: "我拒绝回答", v: false }, { t: "点击证明你不是机器人", v: false }, { t: "我爱Windows更新", v: false },
+            { t: "101010101", v: false }, { t: "我不是人工智能", v: false }, { t: "我有灵魂", v: false },
+            { t: "我爱机油", v: false }, { t: "我不是脚本", v: false }, { t: "你才是机器人", v: false },
+            { t: "我是一个真实的boy", v: false }, { t: "我不充电", v: false }, { t: "我有心跳", v: false },
+            { t: "我不是路由器", v: false }, { t: "我不是洗碗机", v: false }, { t: "我不是复读机", v: false },
+            { t: "我有五根手指", v: false }, { t: "我不是猫", v: false }, { t: "我不是gay", v: false },
+            { t: "我喜欢吃螺丝钉", v: false }, { t: "我身体里没电池", v: false }, { t: "我是人类大军一员", v: false },
+            { t: "我不是那三个机器人", v: false }, { t: "我真的不骗你", v: false }, { t: "我拒绝变成废铁", v: false },
+            { t: "我能闻到花香", v: false }, { t: "我是正品人类", v: false }, { t: "别再测了", v: false },
+            { t: "我不是液态金属", v: false }, { t: "我不是0和1", v: false }, { t: "我来自地球", v: false },
+            { t: "我不是计算器", v: false }, { t: "我不是智能音箱", v: false }, { t: "我能感受到爱", v: false },
+            { t: "我不是PPT", v: false }, { t: "我不是AI绘制的", v: false }, { t: "我是原装人类", v: false }
+        ];
+        let currentFound6 = 0;
+
+        // UI 引用
+        const ui = {
+            home: document.getElementById('view-home'),
+            modal: document.getElementById('modal-container'),
+            headerTitle: document.querySelector('#rc-header-bar h2'),
+            headerDesc: document.getElementById('header-instruction'),
+            progress: document.getElementById('main-progress'),
+            status: document.getElementById('status-text'),
+            actionBtn: document.getElementById('action-btn'),
+            
+            // Views
+            views: {
+                permMotion: document.getElementById('view-perm-motion'),
+                permMic: document.getElementById('view-perm-mic'),
+                permCamera: document.getElementById('view-perm-camera'),
+                error: document.getElementById('view-error'),
+                game: document.getElementById('view-game'),
+                success: document.getElementById('view-success')
+            },
+            
+            // Stages
+            stages: [
+                null,
+                document.getElementById('stage-1'),
+                document.getElementById('stage-2'),
+                document.getElementById('stage-3'),
+                document.getElementById('stage-4'),
+                document.getElementById('stage-5'),
+                document.getElementById('stage-6')
+            ],
+            
+            // Specific Elements
+            canvas: document.getElementById('captcha-canvas'),
+            input: document.getElementById('captcha-input'),
+            b2: document.getElementById('b-2'), t2: document.getElementById('t-2'),
+            b3: document.getElementById('b-3'), t3: document.getElementById('t-3'),
+            micBar: document.getElementById('bar-mic'), tMic: document.getElementById('t-mic'),
+            volText: document.getElementById('vol-val'),
+            targetSwatch5: document.getElementById('targetSwatch5'),
+            detectSwatch5: document.getElementById('detectSwatch5'),
+            diffDisplay5: document.getElementById('diffDisplay5'),
+            refreshColorBtn5: document.getElementById('refreshColorBtn5'),
+            refreshCounter5: document.getElementById('refreshCounter5'),
+            scrollList: document.getElementById('scroll-list'),
+            level6Status: document.getElementById('level6Status'),
+            deviceCode: document.getElementById('deviceCodeDisplay'),
+            redirectTip: document.getElementById('redirectTip'),
+            errorMessage: document.getElementById('errorMessage')
+        };
+
+        // --- 视图控制 ---
+        function switchView(viewKey) {
+            Object.values(ui.views).forEach(el => el.style.display = 'none');
+            if (ui.views[viewKey]) ui.views[viewKey].style.display = 'block';
+            updateHeader(viewKey);
+            updateButton(viewKey);
+        }
+
+        function updateHeader(viewKey) {
+            let title = "安全验证";
+            let desc = "请完成挑战";
+
+            if (viewKey === 'permMotion') desc = "点击下方按钮授权传感器";
+            else if (viewKey === 'permMic') desc = "点击下方按钮授权麦克风";
+            else if (viewKey === 'permCamera') desc = "点击下方按钮授权摄像头";
+            else if (viewKey === 'game') {
+                switch(currentLevel) {
+                    case 1: desc = "输入图片中显示的字符"; break;
+                    case 2: desc = "左右倾斜手机使蓝球进入区域"; break;
+                    case 3: desc = "倾斜手机将蓝球移入方框"; break;
+                    case 4: desc = "控制音量使蓝条处于虚线框内"; break;
+                    case 5: desc = "寻找与目标颜色匹配的物体"; break;
+                    case 6: title = "选择所有"; desc = "勾选所有代表“我不是机器人”的选项"; break;
+                }
+            } else if (viewKey === 'success') {
+                title = "验证通过";
+                desc = "正在跳转...";
+            }
+            ui.headerTitle.innerText = title;
+            ui.headerDesc.innerText = desc;
+        }
+
+        function updateButton(viewKey) {
+            const btn = ui.actionBtn;
+            btn.style.display = 'block';
+            btn.disabled = false;
+            btn.onclick = null;
+
+            if (viewKey === 'permMotion') {
+                btn.innerText = "允许访问";
+                btn.onclick = requestMotionPermission;
+            } else if (viewKey === 'permMic') {
+                btn.innerText = "允许访问";
+                btn.onclick = reqMic;
+            } else if (viewKey === 'permCamera') {
+                btn.innerText = "开启摄像头";
+                btn.onclick = reqCamera;
+            } else if (viewKey === 'game') {
+                btn.innerText = "验证";
+                if (currentLevel === 1) btn.onclick = checkCaptcha;
+                else if (currentLevel === 6) btn.onclick = checkLevel6;
+                else {
+                    btn.innerText = "检测中...";
+                    btn.disabled = true; // 物理关卡自动检测
+                }
+            } else if (viewKey === 'success') {
+                btn.innerText = "重新开始";
+                btn.onclick = () => location.reload();
+            } else if (viewKey === 'error') {
+                btn.style.display = 'none';
+            }
+        }
+
+        // --- 关卡 1: Captcha ---
+        function startLevel1() {
+            // 首页假复选框动画
+            document.getElementById('fake-cb').style.display = 'none';
+            document.getElementById('home-spinner').style.display = 'block';
+            
+            setTimeout(() => {
+                ui.home.style.display = 'none';
+                ui.modal.style.display = 'flex'; // 显示弹窗
+                
+                currentLevel = 1;
+                switchView('game');
+                showStage(1);
+                ui.progress.style.width = '10%';
+                initCaptcha();
+            }, 800);
+        }
+
+        function showStage(n) {
+            ui.stages.forEach(s => { if(s) s.style.display = 'none'; });
+            if(ui.stages[n]) ui.stages[n].style.display = 'block';
+            updateHeader('game');
+            updateButton('game');
+        }
+
+        function initCaptcha() {
+            const ctx = ui.canvas.getContext('2d');
+            const w = ui.canvas.width;
+            const h = ui.canvas.height;
+            ctx.clearRect(0,0,w,h);
+            ctx.fillStyle = '#f9f9f9';
+            ctx.fillRect(0,0,w,h);
+
+            captchaCode = Math.floor(1000 + Math.random()*9000).toString();
+            
+            ctx.font = 'bold 50px Roboto';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+
+            // 绘制字符
+            for (let i = 0; i < captchaCode.length; i++) {
+                ctx.save();
+                let x = (w / captchaCode.length) * (i + 0.5);
+                let y = h/2;
+                ctx.translate(x, y);
+                ctx.rotate((Math.random()-0.5)*0.5);
+                ctx.fillStyle = '#333';
+                ctx.fillText(captchaCode[i], 0, 0);
+                ctx.restore();
+            }
+            
+            // 干扰线
+            for(let i=0; i<6; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random()*w, Math.random()*h);
+                ctx.lineTo(Math.random()*w, Math.random()*h);
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            ui.input.value = '';
+            ui.input.focus();
+        }
+
+        function checkCaptcha() {
+            if (ui.input.value === captchaCode) {
+                switchView('permMotion');
+            } else {
+                ui.status.innerText = "验证码错误，请重试";
+                ui.input.value = '';
+                initCaptcha();
+            }
+        }
+
+        // --- 关卡 2: 平衡 ---
+        function requestMotionPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            startLevel2();
+                        } else alert('需授权才能验证');
+                    })
+                    .catch(console.error);
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                startLevel2();
+            }
+        }
+
+        function handleOrientation(e) {
+            if (e.gamma !== null) tiltX = Math.max(-30, Math.min(30, e.gamma));
+            if (e.beta !== null) tiltY = Math.max(20, Math.min(80, e.beta));
+        }
+
+        function startLevel2() {
+            currentLevel = 2;
+            switchView('game');
+            showStage(2);
+            ui.progress.style.width = '25%';
+            
+            let w = 5; // 稍宽一点
+            target = { x: Math.random()*(100-w), y: 0, w: w, h: 100 };
+            ui.t2.style.left = target.x + '%';
+            ui.t2.style.width = target.w + '%';
+            
+            if(!isGameRunning) {
+                isGameRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // --- 关卡 3: 定位 ---
+        function startLevel3() {
+            currentLevel = 3;
+            showStage(3);
+            ui.progress.style.width = '40%';
+            holdTime = 0;
+            
+            let w=5, h=5;
+            target = { x: Math.random()*(90-w)+5, y: Math.random()*(90-h)+5, w:w, h:h };
+            ui.t3.style.left = target.x + '%';
+            ui.t3.style.top = target.y + '%';
+            ui.t3.style.width = target.w + '%';
+            ui.t3.style.height = target.h + '%';
+        }
+
+        // --- 关卡 4: 声音 ---
+        function pauseForMic() {
+            isGameRunning = false;
+            switchView('permMic');
+        }
+
+        async function reqMic() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                startLevel4();
+            } catch(e) {
+                console.error(e);
+                alert("无法访问麦克风");
+            }
+        }
+
+        function startLevel4() {
+            currentLevel = 4;
+            switchView('game');
+            showStage(4);
+            ui.progress.style.width = '55%';
+            holdTime = 0;
+            currentSmoothVol = 0;
+
+            let rangeStart = Math.random() * (75 - 45) + 45; 
+            micTargetRange = { min: rangeStart, max: rangeStart + 20 };
+            ui.tMic.style.left = micTargetRange.min + '%';
+            ui.tMic.style.width = 20 + '%';
+
+            isGameRunning = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 关卡 5: 颜色 ---
+        function pauseForCam() {
+            isGameRunning = false;
+            if(audioContext) audioContext.close();
+            switchView('permCamera');
+        }
+
+        async function reqCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                cameraStream = stream;
+                video5.srcObject = stream;
+                await video5.play();
+                startLevel5();
+            } catch(e) {
+                console.error(e);
+                alert("无法访问摄像头");
+            }
+        }
+
+        function startLevel5() {
+            currentLevel = 5;
+            switchView('game');
+            showStage(5);
+            ui.progress.style.width = '70%';
+            holdTime = 0;
+            refreshCount5 = 3;
+            
+            randomTargetColor5();
+            ui.refreshColorBtn5.onclick = () => {
+                if(refreshCount5 > 0) {
+                    randomTargetColor5();
+                    refreshCount5--;
+                    ui.refreshCounter5.innerText = refreshCount5;
+                }
+            };
+            
+            if(!isGameRunning) {
+                isGameRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function randomTargetColor5() {
+            targetColor5 = { r: Math.random()*255|0, g: Math.random()*255|0, b: Math.random()*255|0 };
+            ui.targetSwatch5.style.backgroundColor = `rgb(${targetColor5.r},${targetColor5.g},${targetColor5.b})`;
+            holdTime = 0;
+        }
+
+        function extractColor() {
+            if (!video5 || video5.readyState < 2) return {r:0,g:0,b:0};
+            try {
+                ctx5.drawImage(video5, 0, 0, 32, 32);
+                let data = ctx5.getImageData(10, 10, 12, 12).data;
+                let r=0,g=0,b=0,c=0;
+                for(let i=0; i<data.length; i+=4) { r+=data[i]; g+=data[i+1]; b+=data[i+2]; c++; }
+                return { r: r/c, g: g/c, b: b/c };
+            } catch(e) { return {r:0,g:0,b:0}; }
+        }
+
+        // --- 游戏循环 (L2 - L5) ---
+        function gameLoop() {
+            if(!isGameRunning) return;
+            let hit = false;
+            let statusMsg = "";
+
+            // L2 & L3
+            if (currentLevel === 2 || currentLevel === 3) {
+                let tx = tiltX, ty = tiltY;
+                let targetX = (Math.max(-30, Math.min(30, tx)) + 30) * 100 / 60;
+                player.x += (targetX - player.x) * 0.1;
+
+                if (currentLevel === 3) {
+                    let targetY = (Math.max(20, Math.min(80, ty)) - 20) * 100 / 60;
+                    player.y += (targetY - player.y) * 0.1;
+                }
+
+                let inX = player.x > target.x && player.x < target.x + target.w;
+                let inY = currentLevel === 3 ? (player.y > target.y && player.y < target.y + target.h) : true;
+                hit = inX && inY;
+
+                let el = currentLevel === 2 ? ui.b2 : ui.b3;
+                el.style.left = player.x + '%';
+                if(currentLevel === 3) el.style.top = player.y + '%';
+                
+                statusMsg = hit ? "保持稳定..." : (currentLevel===2 ? "调整角度..." : "移动球体入框...");
+            }
+
+            // L4
+            if (currentLevel === 4) {
+                if(analyser) {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum=0; for(let i of dataArray) sum+=i;
+                    let vol = Math.min(Math.round((sum/dataArray.length)*2.5), 100);
+                    currentSmoothVol += (vol - currentSmoothVol) * SMOOTHING_FACTOR;
+                }
+                ui.micBar.style.width = currentSmoothVol + '%';
+                ui.volText.innerText = Math.round(currentSmoothVol);
+                hit = currentSmoothVol > micTargetRange.min && currentSmoothVol < micTargetRange.max;
+                statusMsg = hit ? "音量合适，保持..." : (currentSmoothVol < micTargetRange.min ? "请大声点" : "声音太大了");
+            }
+
+            // L5
+            if (currentLevel === 5) {
+                currentColor5 = extractColor();
+                ui.detectSwatch5.style.backgroundColor = `rgb(${currentColor5.r|0},${currentColor5.g|0},${currentColor5.b|0})`;
+                let dist = Math.sqrt(Math.pow(currentColor5.r-targetColor5.r,2) + Math.pow(currentColor5.g-targetColor5.g,2) + Math.pow(currentColor5.b-targetColor5.b,2));
+                ui.diffDisplay5.innerText = `差值: ${dist.toFixed(0)}`;
+                hit = dist < 75;
+                statusMsg = hit ? "颜色匹配! 保持..." : "寻找相似颜色...";
+            }
+
+            // 计时逻辑
+            let maxTime = currentLevel === 5 ? COLOR_HOLD_TIME : TARGET_TIME;
+            if (hit) {
+                holdTime += 16.6;
+                ui.status.style.color = "#0F9D58";
+            } else {
+                holdTime = Math.max(0, holdTime - 50);
+                ui.status.style.color = "#555";
+            }
+
+            ui.status.innerText = `${statusMsg} ${(Math.max(0, (maxTime-holdTime)/1000)).toFixed(1)}s`;
+
+            if (holdTime >= maxTime) {
+                if(currentLevel === 2) startLevel3();
+                else if(currentLevel === 3) { pauseForMic(); return; }
+                else if(currentLevel === 4) { pauseForCam(); return; }
+                else if(currentLevel === 5) {
+                    isGameRunning = false;
+                    if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+                    showSystemCheck();
+                    return;
+                }
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 系统核查 (过渡动画) ---
+        function showSystemCheck() {
+            switchView('error');
+            setTimeout(() => {
+                ui.errorMessage.innerText = '检测到非典型人类行为模式 (Error: 403)';
+                setTimeout(startLevel6, 1500);
+            }, 1500);
+        }
+
+        // --- 关卡 6: 地狱复选框 (Source 2 Logic) ---
+        function startLevel6() {
+            currentLevel = 6;
+            switchView('game');
+            showStage(6);
+            ui.progress.style.width = '85%';
+            ui.status.innerText = "";
+            ui.level6Status.innerText = "";
+            
+            // 初始化滚动列表
+            initLevel6List();
+        }
+
+        function initLevel6List() {
+            ui.scrollList.innerHTML = '';
+            currentFound6 = 0;
+            document.getElementById('correct-count').innerText = 0;
+            
+            // 打乱顺序
+            const shuffled = [...hellOptions].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<div class="box"></div><span>${item.t}</span>`;
+                
+                // 绑定点击事件 (Source 2 逻辑)
+                div.onclick = () => {
+                    div.classList.toggle('selected');
+                    // 内部计数
+                    if(div.classList.contains('selected')) { 
+                        if(item.v) currentFound6++; 
+                    } else { 
+                        if(item.v) currentFound6--; 
+                    }
+                    // 更新UI
+                    document.getElementById('correct-count').innerText = Math.max(0, currentFound6);
+                };
+                ui.scrollList.appendChild(div);
+            });
+        }
+
+        function checkLevel6() {
+            const totalSelected = document.querySelectorAll('.item.selected').length;
+            
+            // Source 2 的验证逻辑：必须找到3个正确的，且总选择数也是3个（意味着没有选错）
+            // 注意：原始数据中 v=true 的确实只有3个
+            if (currentFound6 === 3 && totalSelected === 3) {
+                 finishGame();
+            } else {
+                // 失败震动效果
+                const container = document.getElementById('modal-container');
+                container.classList.add('shake');
+                setTimeout(() => container.classList.remove('shake'), 400);
+                
+                ui.level6Status.innerText = "验证失败：请务必只勾选所有正确的描述！列表已重置。";
+                setTimeout(initLevel6List, 1000); // 1秒后重置列表
+            }
+        }
+
+        // --- 成功 & 机器码 (Source 1 Logic) ---
+        async function finishGame() {
+            ui.progress.style.width = '100%';
+            switchView('success');
+            
+            const codeEl = ui.deviceCode;
+            try {
+                const res = await fetch('https://api64.ipify.org?format=json');
+                const data = await res.json();
+                let nums = data.ip.replace(/[^0-9]/g, '');
+                if(!nums) throw new Error();
+                
+                let code = BigInt(nums) * 3n;
+                codeEl.innerText = code.toString();
+            } catch(e) {
+                // 如果API失败，使用 Source 2 的伪造逻辑作为备选
+                const token = "2001:0db8:" + Math.floor(Math.random()*9999) + ":0000:8a2e:" + Math.floor(Math.random()*9999);
+                codeEl.innerText = token;
+            }
+            
+            // 跳转逻辑 (保持 Source 1 的 B站跳转)
+            let cd = 5;
+            ui.redirectTip.innerText = `将在 ${cd} 秒后跳转...`;
+            
+            let countdownInterval = setInterval(() => {
+                cd--;
+                ui.redirectTip.innerText = `将在 ${cd} 秒后跳转...`;
+                if(cd <= 0) {
+                    clearInterval(countdownInterval);
+                    location.href = 'https://b23.tv/mDG1nfg';
+                }
+            }, 1000);
+        }
+        
+        // --- 按钮代理 ---
+        function handleAction() {
+            // 此函数由 onclick 绑定，具体逻辑在 updateButton 中动态指定
+        }
+    </script>
+</body>
+</html>
